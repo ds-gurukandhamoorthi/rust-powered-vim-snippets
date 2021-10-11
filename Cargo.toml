@@ -11,5 +11,9 @@ name = "rustsnippetsutils"
 crate-type = ["cdylib"]
 
 [dependencies.cpython]
-version = "0.5.0"
+version = "0.7"
 features = ["extension-module"]
+
+
+[dependencies]
+regex = "1.5"
