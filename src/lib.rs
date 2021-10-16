@@ -1,5 +1,6 @@
 use cpython::{Python, PyResult, py_module_initializer, py_fn};
 use regex::Regex;
+use std::fs;
 
 fn gen_init(variables_str: &str) -> String {
     let tab = "    ";
@@ -25,6 +26,32 @@ fn get_last_read_argument(line: &str) -> i32 {
     nb_args_upto_this_line + 1
 }
 
+fn get_recent_line_containing_pattern(direc: &str, pattern: &str) -> String{
+    let mut files: Vec<_> = fs::read_dir(direc).unwrap()
+        .map(|file| file.unwrap().path())
+        .collect();
+
+
+    files.sort_by_key(|a| fs::metadata(a).unwrap()
+        .modified().unwrap()
+        .elapsed().unwrap()
+        .as_secs() as i128
+    );
+
+    let contents_each_file = files.into_iter()
+        .filter_map(|file| fs::read_to_string(file).ok());
+
+    for content in contents_each_file{
+        for line in content.lines(){
+            if line.contains(&pattern) {
+                return line.to_string();
+            }
+        }
+    }
+
+    "".to_string()
+}
+
 fn get_last_read_argument_py(_: Python, line: &str) -> PyResult<i32> {
     Ok(get_last_read_argument(line))
 }
@@ -33,9 +60,14 @@ fn gen_init_py(_:Python, variables_str: &str) -> PyResult<String> {
     Ok(gen_init(variables_str))
 }
 
+fn get_recent_line_containing_pattern_py(_: Python, direc: &str, pattern: &str) -> PyResult<String> {
+    Ok(get_recent_line_containing_pattern(direc, pattern))
+}
+
 py_module_initializer!(rustsnippetsutils, |py, m| {
     m.add(py, "__doc__", "Module written in rust for use in inline-python code snippets")?;
     m.add(py, "gen_init", py_fn!(py, gen_init_py(variables_str: &str)))?;
     m.add(py, "get_last_read_argument", py_fn!(py, get_last_read_argument_py(line: &str)))?;
+    m.add(py, "get_recent_line_containing_pattern", py_fn!(py, get_recent_line_containing_pattern_py(direc: &str, pattern: &str)))?;
     Ok(())
 });
