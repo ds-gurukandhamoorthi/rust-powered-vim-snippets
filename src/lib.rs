@@ -42,7 +42,7 @@ fn get_recent_line_containing_pattern(direc: &str, pattern: &str) -> String{
         .filter_map(|file| fs::read_to_string(file).ok());
 
     for content in contents_each_file{
-        for line in content.lines(){
+        for line in content.lines().rev(){
             if line.contains(&pattern) {
                 return line.to_string();
             }
