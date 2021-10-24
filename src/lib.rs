@@ -52,6 +52,17 @@ fn get_recent_line_containing_pattern(direc: &str, pattern: &str) -> String{
     "".to_string()
 }
 
+// 43 -> 43:00
+fn generate_duration(abbrev: &str) -> String {
+    let dur = abbrev.parse::<u16>();
+    match dur {
+        Ok(hour) if hour < 5 && hour > 0  => format!("{}:00:00", hour),
+        Ok(min) if min < 60 && min > 7  => format!("{}:00", min),
+        Ok(hourmin) if hourmin > 100 => format!("{}:{:02}:00", hourmin / 100, hourmin % 100),
+        _ => "UNKNOWN".to_string(),
+    }
+}
+
 fn get_last_read_argument_py(_: Python, line: &str) -> PyResult<i32> {
     Ok(get_last_read_argument(line))
 }
@@ -64,10 +75,15 @@ fn get_recent_line_containing_pattern_py(_: Python, direc: &str, pattern: &str) 
     Ok(get_recent_line_containing_pattern(direc, pattern))
 }
 
+fn generate_duration_py(_: Python, abbrev: &str) -> PyResult<String> {
+    Ok(generate_duration(abbrev))
+}
+
 py_module_initializer!(rustsnippetsutils, |py, m| {
     m.add(py, "__doc__", "Module written in rust for use in inline-python code snippets")?;
     m.add(py, "gen_init", py_fn!(py, gen_init_py(variables_str: &str)))?;
     m.add(py, "get_last_read_argument", py_fn!(py, get_last_read_argument_py(line: &str)))?;
     m.add(py, "get_recent_line_containing_pattern", py_fn!(py, get_recent_line_containing_pattern_py(direc: &str, pattern: &str)))?;
+    m.add(py, "generate_duration", py_fn!(py, generate_duration_py(abbref: &str)))?;
     Ok(())
 });
