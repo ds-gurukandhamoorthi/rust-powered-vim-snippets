@@ -26,7 +26,7 @@ fn get_last_read_argument(line: &str) -> i32 {
     nb_args_upto_this_line + 1
 }
 
-fn get_recent_line_containing_pattern(direc: &str, pattern: &str) -> String{
+fn get_recent_line_containing_pattern(direc: &str, pattern: &str, duration: &str) -> String{
     let mut files: Vec<_> = fs::read_dir(direc).unwrap()
         .map(|file| file.unwrap().path())
         .collect();
@@ -44,7 +44,13 @@ fn get_recent_line_containing_pattern(direc: &str, pattern: &str) -> String{
     for content in contents_each_file{
         for line in content.lines().rev(){
             if line.contains(&pattern) {
-                return line.to_string();
+                return if duration.is_empty() {
+                    line.to_string()
+                }else{
+                    let regex = Regex::new(r"^[^;]+;").unwrap();
+                    let line = regex.replace(line, "");
+                    format!("{};{}", generate_duration(duration), line.to_string())
+                };
             }
         }
     }
@@ -71,8 +77,8 @@ fn gen_init_py(_:Python, variables_str: &str) -> PyResult<String> {
     Ok(gen_init(variables_str))
 }
 
-fn get_recent_line_containing_pattern_py(_: Python, direc: &str, pattern: &str) -> PyResult<String> {
-    Ok(get_recent_line_containing_pattern(direc, pattern))
+fn get_recent_line_containing_pattern_py(_: Python, direc: &str, pattern: &str, duration: &str) -> PyResult<String> {
+    Ok(get_recent_line_containing_pattern(direc, pattern, duration))
 }
 
 fn generate_duration_py(_: Python, abbrev: &str) -> PyResult<String> {
@@ -83,7 +89,7 @@ py_module_initializer!(rustsnippetsutils, |py, m| {
     m.add(py, "__doc__", "Module written in rust for use in inline-python code snippets")?;
     m.add(py, "gen_init", py_fn!(py, gen_init_py(variables_str: &str)))?;
     m.add(py, "get_last_read_argument", py_fn!(py, get_last_read_argument_py(line: &str)))?;
-    m.add(py, "get_recent_line_containing_pattern", py_fn!(py, get_recent_line_containing_pattern_py(direc: &str, pattern: &str)))?;
+    m.add(py, "get_recent_line_containing_pattern", py_fn!(py, get_recent_line_containing_pattern_py(direc: &str, pattern: &str, duration: &str)))?;
     m.add(py, "generate_duration", py_fn!(py, generate_duration_py(abbref: &str)))?;
     Ok(())
 });
