@@ -38,24 +38,36 @@ fn get_recent_line_containing_pattern(direc: &str, pattern: &str, duration: &str
         .as_secs() as i128
     );
 
-    let contents_each_file = files.into_iter()
-        .filter_map(|file| fs::read_to_string(file).ok());
+    let starts_with_duration = Regex::new(r"^[0-9:]+;").unwrap();
 
-    for content in contents_each_file{
-        for line in content.lines().rev(){
-            if line.contains(&pattern) {
-                return if duration.is_empty() {
-                    line.to_string()
+    let grep = |contents: &str, pat: &str| -> Vec<String> {
+        contents.lines()
+            .filter(|line| line.contains(&pat))
+            .filter(|line| duration.is_empty() || starts_with_duration.is_match(line))
+            .collect::<Vec<&str>>()
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect()
+    };
+
+    let lines = files.into_iter()
+        .filter_map(|file| fs::read_to_string(file).ok())
+        .flat_map(|filecontent| grep(&filecontent, pattern))
+        ;
+
+    let one_relev_line = lines.take(1).next();
+
+    let res = match one_relev_line {
+        Some(line) => if duration.is_empty() {
+                    line
                 }else{
                     let regex = Regex::new(r"^[^;]+;").unwrap();
-                    let line = regex.replace(line, "");
-                    format!("{};{}", generate_duration(duration), line.to_string())
-                };
-            }
-        }
-    }
-
-    "".to_string()
+                    let line = regex.replace(&line, "");
+                    format!("{};{}", generate_duration(duration), line)
+                },
+        _ => "".to_string(),
+    };
+    res
 }
 
 // 43 -> 43:00
