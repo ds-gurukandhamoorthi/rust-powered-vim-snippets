@@ -41,7 +41,7 @@ fn get_recent_line_containing_pattern(direc: &str, pattern: &str, duration: &str
     let starts_with_duration = Regex::new(r"^[0-9:]+;").unwrap();
 
     let grep = |contents: &str, pat: &str| -> Vec<String> {
-        contents.lines()
+        contents.lines().rev()
             .filter(|line| line.contains(&pat))
             .filter(|line| duration.is_empty() || starts_with_duration.is_match(line))
             .collect::<Vec<&str>>()
