@@ -81,6 +81,27 @@ fn generate_duration(abbrev: &str) -> String {
     }
 }
 
+fn special_time_diff(timerange: &str) -> String {
+    let mut iter = timerange.trim().splitn(2, ' ')
+        .map(|x| x.parse::<u16>().unwrap())
+        .map(|dur| ((dur / 100) * 60, dur % 100))
+        .inspect(|&(_, mins)| assert!(mins < 60, "minutes in duration must be less than 60"))
+        .map(|(hr, mn)| hr + mn);
+
+    let start = iter.next().unwrap();
+    let end = iter.next().unwrap();
+    let diff = if start < end {
+        end - start
+    } else {
+        24 * 60 - start + end
+    };
+    let (hour, min) = (diff / 60, diff % 60);
+    let duration = format!("{}:{:02}", hour, min);
+    let start = format!("{}:{:02}", start / 60, start % 60);
+    let end = format!("{}:{:02}", end / 60, end % 60);
+    format!("{}-{}={}", start, end, duration)
+}
+
 fn get_last_read_argument_py(_: Python, line: &str) -> PyResult<i32> {
     Ok(get_last_read_argument(line))
 }
@@ -97,11 +118,16 @@ fn generate_duration_py(_: Python, abbrev: &str) -> PyResult<String> {
     Ok(generate_duration(abbrev))
 }
 
+fn special_time_diff_py(_: Python, timerange: &str) -> PyResult<String> {
+    Ok(special_time_diff(timerange))
+}
+
 py_module_initializer!(rustsnippetsutils, |py, m| {
     m.add(py, "__doc__", "Module written in rust for use in inline-python code snippets")?;
     m.add(py, "gen_init", py_fn!(py, gen_init_py(variables_str: &str)))?;
     m.add(py, "get_last_read_argument", py_fn!(py, get_last_read_argument_py(line: &str)))?;
     m.add(py, "get_recent_line_containing_pattern", py_fn!(py, get_recent_line_containing_pattern_py(direc: &str, pattern: &str, duration: &str)))?;
     m.add(py, "generate_duration", py_fn!(py, generate_duration_py(abbref: &str)))?;
+    m.add(py, "special_time_diff", py_fn!(py, special_time_diff_py(timerange: &str)))?;
     Ok(())
 });
