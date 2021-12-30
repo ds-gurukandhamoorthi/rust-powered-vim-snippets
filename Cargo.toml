@@ -17,3 +17,4 @@ features = ["extension-module"]
 
 [dependencies]
 regex = "1.5"
+fuzzywuzzy = "*"

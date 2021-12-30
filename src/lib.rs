@@ -1,6 +1,63 @@
 use cpython::{Python, PyResult, py_module_initializer, py_fn};
 use regex::Regex;
 use std::fs;
+use fuzzywuzzy::{process, fuzz, utils};
+
+const IMPORTS: &'static [&'static str] =  &[
+    "sys",
+    "math",
+    "random",
+    "argparse",
+    "datetime",
+    "matplotlib.pyplot as plt",
+    "matplotlib.patches as patches",
+    "matplotlib.collections",
+    "matplotlib.image as mpimg",
+    "functools",
+    "itertools",
+    "numpy as np",
+    "pandas as pd",
+    "subprocess",
+    "requests",
+    "seaborn as sns",
+    "statsmodels.api as sm",
+    "statsmodels.formula.api as smf",
+    "zipline as zp",
+];
+
+const STATIC_IMPORTS: &'static [&'static str] =  &[
+    "numpy.random import choice",
+    "collections import Counter",
+    "collections import defaultdict",
+    "sklearn.linear_model import LinearRegression",
+    "sklearn.linear_model import LogisticRegression",
+    "sklearn.pipeline import make_pipeline",
+    "sklearn.model_selection import train_test_split",
+    "sklearn.metrics import confusion_matrix",
+    "sklearn.manifold import Isomap",
+    "sklearn.model_selection import GridSearchCV",
+    "sklearn.model_selection import cross_val_score",
+    "sklearn.decomposition import PCA",
+    "sklearn.svm import SVC",
+    "sklearn.naive_bayes import GaussianNB",
+    "sklearn.neighbors import KNeighborsClassifier",
+    "sklearn.feature_extraction.text import TfidfVectorizer",
+    "sklearn.preprocessing import PolynomialFeatures",
+    "sklearn.datasets import load_iris",
+    "sklearn.datasets import make_blobs",
+    "sklearn.datasets import load_digits",
+    "sklearn.ensemble import RandomForestClassifier",
+    "sklearn.metrics import accuracy_score",
+    "sklearn.linear_model import Ridge",
+    "sklearn.cluster import KMeans",
+    "sklearn.tree import DecisionTreeRegressor",
+    "sklearn.tree import DecisionTreeClassifier",
+    "mpl_toolkits.basemap import Basemap",
+    "tensorflow import keras",
+
+    "bs4 import BeautifulSoup",
+];
+
 
 fn gen_init(variables_str: &str) -> String {
     let tab = "    ";
@@ -102,6 +159,22 @@ fn special_time_diff(timerange: &str) -> String {
     format!("{}-{}={}", start, end, duration)
 }
 
+fn get_imports(mnemo: &str) -> String {
+   let res = process::extract_one(mnemo, IMPORTS, &utils::full_process, &fuzz::wratio, 0);
+   match res {
+       Some((lib, _)) => format!("import {}", lib),
+       _ => "".to_string()
+   }
+}
+
+fn get_static_imports(mnemo: &str) -> String {
+   let res = process::extract_one(mnemo, STATIC_IMPORTS, &utils::full_process, &fuzz::wratio, 0);
+   match res {
+       Some((lib, _)) => format!("from {}", lib),
+       _ => "".to_string()
+   }
+}
+
 fn get_last_read_argument_py(_: Python, line: &str) -> PyResult<i32> {
     Ok(get_last_read_argument(line))
 }
@@ -122,6 +195,14 @@ fn special_time_diff_py(_: Python, timerange: &str) -> PyResult<String> {
     Ok(special_time_diff(timerange))
 }
 
+fn get_imports_py(_:Python, mnemo: &str) -> PyResult<String> {
+    Ok(get_imports(mnemo))
+}
+
+fn get_static_imports_py(_:Python, mnemo: &str) -> PyResult<String> {
+    Ok(get_static_imports(mnemo))
+}
+
 py_module_initializer!(rustsnippetsutils, |py, m| {
     m.add(py, "__doc__", "Module written in rust for use in inline-python code snippets")?;
     m.add(py, "gen_init", py_fn!(py, gen_init_py(variables_str: &str)))?;
@@ -129,5 +210,7 @@ py_module_initializer!(rustsnippetsutils, |py, m| {
     m.add(py, "get_recent_line_containing_pattern", py_fn!(py, get_recent_line_containing_pattern_py(direc: &str, pattern: &str, duration: &str)))?;
     m.add(py, "generate_duration", py_fn!(py, generate_duration_py(abbref: &str)))?;
     m.add(py, "special_time_diff", py_fn!(py, special_time_diff_py(timerange: &str)))?;
+    m.add(py, "get_imports", py_fn!(py, get_imports_py(mnemo: &str)))?;
+    m.add(py, "get_static_imports", py_fn!(py, get_static_imports_py(mnemo: &str)))?;
     Ok(())
 });
