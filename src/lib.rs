@@ -3,7 +3,7 @@ use regex::Regex;
 use std::fs;
 use fuzzywuzzy::{process, fuzz, utils};
 
-const IMPORTS: &'static [&'static str] =  &[
+const IMPORTS: &[&str] =  &[
     "sys",
     "math",
     "random",
@@ -25,7 +25,7 @@ const IMPORTS: &'static [&'static str] =  &[
     "zipline as zp",
 ];
 
-const STATIC_IMPORTS: &'static [&'static str] =  &[
+const STATIC_IMPORTS: &[&str] =  &[
     "numpy.random import choice",
     "collections import Counter",
     "collections import defaultdict",
