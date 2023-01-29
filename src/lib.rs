@@ -1,3 +1,7 @@
+#![allow(
+    clippy::manual_strip
+)]
+
 use cpython::{Python, PyResult, py_module_initializer, py_fn};
 use regex::Regex;
 use std::fs;
