@@ -69,7 +69,7 @@ fn gen_init(variables_str: &str) -> String {
     let mut res = String::new();
     for var in variables {
         let var = var.trim();
-        let line = format!("{}self._{} = {}\n{}", tab, var, var, tab);
+        let line = format!("{tab}self._{var} = {var}\n{tab}");
         res.push_str(&line);
     }
     res
@@ -103,7 +103,7 @@ fn get_recent_line_containing_pattern(direc: &str, pattern: &str, duration: &str
 
     let grep = |contents: &str, pat: &str| -> Vec<String> {
         contents.lines().rev()
-            .filter(|line| line.contains(&pat))
+            .filter(|line| line.contains(pat))
             .filter(|line| duration.is_empty() || starts_with_duration.is_match(line))
             .collect::<Vec<&str>>()
             .into_iter()
@@ -135,8 +135,8 @@ fn get_recent_line_containing_pattern(direc: &str, pattern: &str, duration: &str
 fn generate_duration(abbrev: &str) -> String {
     let dur = abbrev.parse::<u16>();
     match dur {
-        Ok(hour) if hour < 5 && hour > 0  => format!("{}:00:00", hour),
-        Ok(min) if min < 60 && min > 7  => format!("{}:00", min),
+        Ok(hour) if hour < 5 && hour > 0  => format!("{hour}:00:00"),
+        Ok(min) if min < 60 && min > 7  => format!("{min}:00"),
         Ok(hourmin) if hourmin > 100 => format!("{}:{:02}:00", hourmin / 100, hourmin % 100),
         _ => "UNKNOWN".to_string(),
     }
@@ -157,24 +157,24 @@ fn special_time_diff(timerange: &str) -> String {
         24 * 60 - start + end
     };
     let (hour, min) = (diff / 60, diff % 60);
-    let duration = format!("{}:{:02}", hour, min);
+    let duration = format!("{hour}:{min:02}");
     let start = format!("{}:{:02}", start / 60, start % 60);
     let end = format!("{}:{:02}", end / 60, end % 60);
-    format!("{}-{}={}", start, end, duration)
+    format!("{start}-{end}={duration}")
 }
 
 fn get_imports(mnemo: &str) -> String {
-   let res = process::extract_one(mnemo, IMPORTS, &utils::full_process, &fuzz::wratio, 0);
+   let res = process::extract_one(mnemo, IMPORTS, utils::full_process, fuzz::wratio, 0);
    match res {
-       Some((lib, _)) => format!("import {}", lib),
+       Some((lib, _)) => format!("import {lib}"),
        _ => "".to_string()
    }
 }
 
 fn get_static_imports(mnemo: &str) -> String {
-   let res = process::extract_one(mnemo, STATIC_IMPORTS, &utils::full_process, &fuzz::wratio, 0);
+   let res = process::extract_one(mnemo, STATIC_IMPORTS, utils::full_process, fuzz::wratio, 0);
    match res {
-       Some((lib, _)) => format!("from {}", lib),
+       Some((lib, _)) => format!("from {lib}"),
        _ => "".to_string()
    }
 }
