@@ -131,6 +131,51 @@ fn get_recent_line_containing_pattern(direc: &str, pattern: &str, duration: &str
     res
 }
 
+// given specific time
+fn get_recent_line_containing_pattern_given_spec_time(direc: &str, pattern: &str, duration: &str, spectime: &str) -> String{
+    let mut files: Vec<_> = fs::read_dir(direc).unwrap()
+        .map(|file| file.unwrap().path())
+        .collect();
+
+
+    files.sort_by_key(|a| fs::metadata(a).unwrap()
+        .modified().unwrap()
+        .elapsed().unwrap()
+        .as_secs() as i128
+    );
+
+    let starts_with_specific_time = Regex::new(r"^@[0-9:]+;").unwrap();
+
+    let grep = |contents: &str, pat: &str| -> Vec<String> {
+        contents.lines().rev()
+            .filter(|line| line.contains(pat))
+            .filter(|line| duration.is_empty() || starts_with_specific_time.is_match(line))
+            .collect::<Vec<&str>>()
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect()
+    };
+
+    let lines = files.into_iter()
+        .filter_map(|file| fs::read_to_string(file).ok())
+        .flat_map(|filecontent| grep(&filecontent, pattern))
+        ;
+
+    let one_relev_line = lines.take(1).next();
+
+    let res = match one_relev_line {
+        Some(line) => if duration.is_empty() {
+                    line
+                }else{
+                    let regex = Regex::new(r"^[^;]+;[^;]+;").unwrap();
+                    let line = regex.replace(&line, "");
+                    format!("@{};{};{}", generate_timestamp(spectime), generate_duration(duration), line)
+                },
+        _ => "".to_string(),
+    };
+    res
+}
+
 // 43 -> 43:00
 fn generate_duration(abbrev: &str) -> String {
     let dur = abbrev.parse::<u16>();
@@ -138,6 +183,15 @@ fn generate_duration(abbrev: &str) -> String {
         Ok(hour) if hour < 5 && hour > 0  => format!("{hour}:00:00"),
         Ok(min) if min < 60 && min > 7  => format!("{min}:00"),
         Ok(hourmin) if hourmin > 100 => format!("{}:{:02}:00", hourmin / 100, hourmin % 100),
+        _ => "UNKNOWN".to_string(),
+    }
+}
+
+// 1200 -> 12:00
+fn generate_timestamp(abbrev: &str) -> String {
+    let dur = abbrev.parse::<u16>();
+    match dur {
+        Ok(hourmin) => format!("{}:{:02}", hourmin / 100, hourmin % 100),
         _ => "UNKNOWN".to_string(),
     }
 }
@@ -191,6 +245,10 @@ fn get_recent_line_containing_pattern_py(_: Python, direc: &str, pattern: &str, 
     Ok(get_recent_line_containing_pattern(direc, pattern, duration))
 }
 
+fn get_recent_line_containing_pattern_given_spec_time_py(_: Python, direc: &str, pattern: &str, duration: &str, spectime: &str) -> PyResult<String> {
+    Ok(get_recent_line_containing_pattern_given_spec_time(direc, pattern, duration, spectime))
+}
+
 fn generate_duration_py(_: Python, abbrev: &str) -> PyResult<String> {
     Ok(generate_duration(abbrev))
 }
@@ -212,6 +270,7 @@ py_module_initializer!(rustsnippetsutils, |py, m| {
     m.add(py, "gen_init", py_fn!(py, gen_init_py(variables_str: &str)))?;
     m.add(py, "get_last_read_argument", py_fn!(py, get_last_read_argument_py(line: &str)))?;
     m.add(py, "get_recent_line_containing_pattern", py_fn!(py, get_recent_line_containing_pattern_py(direc: &str, pattern: &str, duration: &str)))?;
+    m.add(py, "get_recent_line_containing_pattern_given_spec_time", py_fn!(py, get_recent_line_containing_pattern_given_spec_time_py(direc: &str, pattern: &str, duration: &str, spectime: &str)))?;
     m.add(py, "generate_duration", py_fn!(py, generate_duration_py(abbref: &str)))?;
     m.add(py, "special_time_diff", py_fn!(py, special_time_diff_py(timerange: &str)))?;
     m.add(py, "get_imports", py_fn!(py, get_imports_py(mnemo: &str)))?;
